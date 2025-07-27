@@ -1,13 +1,25 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
-import Register from "./pages/Register";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import VerifyEmail from "./components/VerifyEmail";
 import WaitForVerification from "./components/WaitForVerification";
+import Loader from "./components/Loader";
 
-export default function App() {
+const AppRoutes = () => {
+  const location = useLocation();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    const timeout = setTimeout(() => setLoading(false), 400); // fake loading
+    return () => clearTimeout(timeout);
+  }, [location.pathname]);
+
   return (
-    <BrowserRouter>
+    <>
+      {loading && <Loader />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
@@ -15,6 +27,14 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/wait-for-verification" element={<WaitForVerification />} />
       </Routes>
+    </>
+  );
+};
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   );
 }
