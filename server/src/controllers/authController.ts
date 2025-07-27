@@ -72,37 +72,32 @@ export const loginUser = async (req: Request, res: Response) => {
 
 export const verifyEmail = async (req: Request, res: Response) => {
   const { token } = req.query;
-
-  if (!token || typeof token !== "string") {
-    return res.status(400).json({ message: "Missing or invalid token." });
-  }
-
-  console.log("📩 [VerifyEmail] Token received:", token);
-
   try {
-    const record = await prisma.verificationToken.findUnique({
-      where: { token },
-    });
+    console.log("📩 [VerifyEmail] Token received:", token);
 
-    console.log("🔍 Token DB Record:", record);
-
+    const record = await prisma.verificationToken.findUnique({ where: { token: token as string } });
     if (!record || record.expiresAt < new Date()) {
       return res.status(400).json({ message: "Token is invalid or expired." });
     }
 
-    const user = await prisma.user.update({
+    const user = await prisma.user.findUnique({ where: { id: record.userId } });
+
+    if (user?.isVerified) {
+      return res.status(200).json({ message: "Email already verified", email: user.email });
+    }
+
+    const updatedUser = await prisma.user.update({
       where: { id: record.userId },
       data: { isVerified: true },
     });
 
-    await prisma.verificationToken.delete({ where: { token } });
+    await prisma.verificationToken.delete({ where: { token: token as string } });
 
     const io = getIO();
-    io.emit(`user:verified:${user.email}`, true);
+    io.emit(`user:verified:${updatedUser.email}`, true);
 
-    res.json({ message: "Email verified successfully!", email: user.email });
+    res.json({ message: "Email verified successfully!", email: updatedUser.email });
   } catch (error) {
-    console.error("❌ Email verification failed:", error);
     res.status(500).json({ message: "Verification failed." });
   }
 };

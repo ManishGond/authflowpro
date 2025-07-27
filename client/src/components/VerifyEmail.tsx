@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "../utils/axios"; // ✅ custom axios instance
 
@@ -6,15 +6,16 @@ const VerifyEmail = () => {
   const [params] = useSearchParams();
   const token = params.get("token");
   const [status, setStatus] = useState("Verifying...");
-  const [hasVerified, setHasVerified] = useState(false); // ✅ Prevent double call
   const navigate = useNavigate();
 
+  const hasVerified = useRef(false);
+
   useEffect(() => {
-    if (!token || hasVerified) return;
+    if (!token || hasVerified.current) return;
 
     const verify = async () => {
+      hasVerified.current = true; // ✅ survives unmount in dev mode
       try {
-        setHasVerified(true); // ✅ mark before call to prevent rerun
         const res = await axios.get(`/api/auth/verify-email?token=${token}`);
         setStatus(res.data.message || "Verification successful");
       } catch (err: any) {
@@ -23,7 +24,8 @@ const VerifyEmail = () => {
     };
 
     verify();
-  }, [token, hasVerified]);
+  }, [token]);
+
 
   return (
     <div style={{ textAlign: "center", marginTop: "100px" }}>

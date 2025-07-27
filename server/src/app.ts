@@ -1,5 +1,4 @@
 // import morgan from "morgan";
-
 // // Use common preset or 'dev' for better formatting
 // app.use(morgan("dev"));
 // POST /api/auth/login 200 65ms
@@ -23,8 +22,7 @@ app.use(cors({
 
 app.use(express.json())
 app.use(morgan("dev"))
-app.use("/api/auth", authRoutes)
-// app.use("/api/auth", authLimiter, authRoutes)
+app.use("/api/auth", authLimiter, authRoutes)
 
 // '/' routes
 app.get("/", (_, res) => {
