@@ -1,37 +1,38 @@
-import axios from "axios"
-import { useEffect, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
-import socket from "../utils/socket"
+import { useEffect, useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import axios from "../utils/axios"; // ✅ custom axios instance
 
 const VerifyEmail = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const token = new URLSearchParams(location.search).get("token")
+  const [params] = useSearchParams();
+  const token = params.get("token");
   const [status, setStatus] = useState("Verifying...");
+  const [hasVerified, setHasVerified] = useState(false); // ✅ Prevent double call
+  const navigate = useNavigate();
 
   useEffect(() => {
+    if (!token || hasVerified) return;
+
     const verify = async () => {
       try {
+        setHasVerified(true); // ✅ mark before call to prevent rerun
         const res = await axios.get(`/api/auth/verify-email?token=${token}`);
-        const { email } = res.data
-
-        socket.emit("user:verified", { email })
-
-        setStatus("✅ Email Verified!");
-        setTimeout(() => navigate("/"), 3000);
-      } catch (error) {
-        setStatus("❌ Verification failed or token expired.");
+        setStatus(res.data.message || "Verification successful");
+      } catch (err: any) {
+        setStatus(err.response?.data?.message || "Verification failed.");
       }
-    }
+    };
 
-    if (token) verify()
-  }, [token, navigate])
+    verify();
+  }, [token, hasVerified]);
 
   return (
-    <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
-      <h2>{status}</h2>
+    <div style={{ textAlign: "center", marginTop: "100px" }}>
+      <h2>📬 {status}</h2>
+      {status.includes("successful") && (
+        <button onClick={() => navigate("/")}>Go to Home</button>
+      )}
     </div>
   );
-}
+};
 
 export default VerifyEmail;

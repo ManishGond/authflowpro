@@ -1,33 +1,45 @@
 import { useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import socket from "../utils/socket";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { io, Socket } from "socket.io-client";
 
 const WaitForVerification = () => {
+  const [params] = useSearchParams();
+  const email = params.get("email");
   const navigate = useNavigate();
-  const location = useLocation();
-  const email = new URLSearchParams(location.search).get("email");
 
   useEffect(() => {
     if (!email) return;
 
-    const eventName = `user:verified:${email}`;
+    const socket: Socket = io(import.meta.env.VITE_SERVER_URL, {
+      withCredentials: true,
+      transports: ["websocket"],
+    });
 
-    socket.on(eventName, () => {
-      console.log("✅ User verified via socket");
+    socket.on("connect", () => {
+      console.log("✅ [Wait] Connected:", socket.id);
+    });
+
+    socket.on(`user:verified:${email}`, () => {
+      console.log("🎉 Verified in real-time!");
+      socket.disconnect();
       navigate("/");
     });
 
+    socket.on("connect_error", (err) => {
+      console.error("❌ [Wait] Connection error:", err.message);
+    });
+
     return () => {
-      socket.off(eventName);
+      socket.disconnect();
+      console.log("🛑 [Wait] Socket disconnected");
     };
   }, [email, navigate]);
 
   return (
-    <div style={{ display: "grid", placeItems: "center", height: "100vh" }}>
-      <div>
-        <h2>Waiting for Email Verification...</h2>
-        <div className="spinner" />
-      </div>
+    <div style={{ textAlign: "center", marginTop: "100px" }}>
+      <h2>🔐 Waiting for email verification...</h2>
+      <p>Once you verify your email, you'll be redirected automatically.</p>
+      <p style={{ fontSize: "24px", marginTop: "20px" }}>⏳ Loading...</p>
     </div>
   );
 };

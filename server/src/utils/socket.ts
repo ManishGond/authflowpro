@@ -5,7 +5,7 @@ let io: Server;
 export const initSocketIO = (server: any) => {
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL,
+      origin: process.env.CLIENT_URL, // <--- from backend .env
       credentials: true,
     },
   });
@@ -22,8 +22,6 @@ export const initSocketIO = (server: any) => {
 };
 
 export const getIO = () => {
-  if (!io) {
-    throw new Error("Socket.io not initialized!");
-  }
+  if (!io) throw new Error("Socket.IO not initialized!");
   return io;
 };

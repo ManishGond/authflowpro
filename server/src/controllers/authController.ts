@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
-import { sendVerificationEmail } from "../utils/sendEmail";
+import { sendVerificationEmail } from "../utils/sendVerificationEmail";
 import jwt from "jsonwebtoken";
 import { getIO } from "../utils/socket";
 
@@ -73,47 +73,36 @@ export const loginUser = async (req: Request, res: Response) => {
 export const verifyEmail = async (req: Request, res: Response) => {
   const { token } = req.query;
 
+  if (!token || typeof token !== "string") {
+    return res.status(400).json({ message: "Missing or invalid token." });
+  }
+
+  console.log("📩 [VerifyEmail] Token received:", token);
+
   try {
     const record = await prisma.verificationToken.findUnique({
-      where: {
-        token: token as string,
-      },
-      include: {
-        user: true,
-      },
+      where: { token },
     });
+
+    console.log("🔍 Token DB Record:", record);
 
     if (!record || record.expiresAt < new Date()) {
       return res.status(400).json({ message: "Token is invalid or expired." });
     }
 
-    await prisma.user.update({
-      where: {
-        id: record.userId,
-      },
-      data: {
-        isVerified: true,
-      },
+    const user = await prisma.user.update({
+      where: { id: record.userId },
+      data: { isVerified: true },
     });
 
-    await prisma.verificationToken.delete({
-      where: {
-        token: token as string,
-      },
-    });
+    await prisma.verificationToken.delete({ where: { token } });
 
     const io = getIO();
-    io.emit(`user:verified:${record.user.email}`, {
-      message: "Email verified successfully!",
-      email: record.user.email,
-    });
+    io.emit(`user:verified:${user.email}`, true);
 
-    res.json({
-      message: "Email verified successfully!",
-      email: record.user.email,
-    });
+    res.json({ message: "Email verified successfully!", email: user.email });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Email verification failed:", error);
     res.status(500).json({ message: "Verification failed." });
   }
 };
