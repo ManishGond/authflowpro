@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { sendVerificationEmail } from "../utils/sendEmail";
 import jwt from "jsonwebtoken";
+import { getIO } from "../utils/socket";
 
 const prisma = new PrismaClient();
 export const registerUser = async (req: Request, res: Response) => {
@@ -77,7 +78,11 @@ export const verifyEmail = async (req: Request, res: Response) => {
       where: {
         token: token as string,
       },
+      include: {
+        user: true,
+      },
     });
+
     if (!record || record.expiresAt < new Date()) {
       return res.status(400).json({ message: "Token is invalid or expired." });
     }
@@ -96,8 +101,19 @@ export const verifyEmail = async (req: Request, res: Response) => {
         token: token as string,
       },
     });
-    res.json({ message: "Email verified successfully!" });
+
+    const io = getIO();
+    io.emit(`user:verified:${record.user.email}`, {
+      message: "Email verified successfully!",
+      email: record.user.email,
+    });
+
+    res.json({
+      message: "Email verified successfully!",
+      email: record.user.email,
+    });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Verification failed." });
   }
 };
