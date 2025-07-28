@@ -1,12 +1,23 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import ReCAPTCHA from "react-google-recaptcha";
 import axios from "../utils/axios";
 
 const Register = () => {
   const navigate = useNavigate();
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+
+  const handleCaptcha = (token: string | null) => {
+    if (token) {
+      setCaptchaToken(token);
+    } else {
+      setCaptchaToken("");
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -16,8 +27,19 @@ const Register = () => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    if (!captchaToken) {
+      setError("Please complete the reCAPTCHA.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      await axios.post("/api/auth/register", form);
+      await axios.post("/api/auth/register", {
+        ...form,
+        recaptchaToken: captchaToken,
+      });
+
       navigate(`/wait-for-verification?email=${form.email}`);
     } catch (err: any) {
       setError(err.response?.data?.message || "Registration failed.");
@@ -40,6 +62,7 @@ const Register = () => {
           placeholder="Name"
           onChange={handleChange}
           className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+          required
         />
         <input
           name="email"
@@ -47,6 +70,7 @@ const Register = () => {
           placeholder="Email"
           onChange={handleChange}
           className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+          required
         />
         <input
           name="password"
@@ -54,11 +78,18 @@ const Register = () => {
           placeholder="Password"
           onChange={handleChange}
           className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+          required
+        />
+
+        <ReCAPTCHA
+          sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+          onChange={handleCaptcha}
+          ref={recaptchaRef}
         />
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !captchaToken}
           className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-all flex items-center justify-center"
         >
           {loading ? (

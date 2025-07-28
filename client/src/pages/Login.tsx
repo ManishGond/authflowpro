@@ -1,12 +1,23 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../utils/axios";
+import ReCAPTCHA from "react-google-recaptcha";
 
 const Login = () => {
   const navigate = useNavigate();
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+
+  const handleCaptcha = (token: string | null) => {
+    if (token) {
+      setCaptchaToken(token);
+    } else {
+      setCaptchaToken("");
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -17,7 +28,10 @@ const Login = () => {
     setError("");
     setLoading(true);
     try {
-      const res = await axios.post("/api/auth/login", form);
+      const res = await axios.post("/api/auth/login", {
+        ...form,
+        recaptchaToken: captchaToken,
+      });
       localStorage.setItem("token", res.data.token);
       navigate("/");
     } catch (err: any) {
@@ -28,33 +42,49 @@ const Login = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm"
+        className="bg-white shadow-lg rounded-lg p-8 w-full max-w-md space-y-6"
       >
-        <h2 className="text-2xl font-bold mb-4">Login</h2>
+        <h2 className="text-2xl font-bold text-center">Log In</h2>
+
         <input
           name="email"
+          type="email"
           placeholder="Email"
-          className="input mb-3"
           onChange={handleChange}
+          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+          required
         />
         <input
           name="password"
           type="password"
           placeholder="Password"
-          className="input mb-3"
           onChange={handleChange}
+          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+          required
         />
+
+        <ReCAPTCHA
+          sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+          onChange={handleCaptcha}
+          ref={recaptchaRef}
+        />
+
         <button
           type="submit"
-          className="btn-primary w-full flex items-center justify-center"
-          disabled={loading}
+          disabled={loading || !captchaToken}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-all flex items-center justify-center"
         >
-          {loading ? <div className="spinner" /> : "Login"}
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            "Log In"
+          )}
         </button>
-        {error && <p className="text-red-600 mt-3">{error}</p>}
+
+        {error && <p className="text-red-600 text-sm text-center">{error}</p>}
       </form>
     </div>
   );
